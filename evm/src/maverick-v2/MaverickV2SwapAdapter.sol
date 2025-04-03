@@ -7,8 +7,6 @@ import {
     SafeERC20
 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
-uint256 constant RESERVE_LIMIT_FACTOR = 10;
-
 /// @title MaverickV2SwapAdapter
 /// @notice Adapter for swapping tokens on MaverickV2 pools.
 contract MaverickV2SwapAdapter is ISwapAdapter {
@@ -16,17 +14,14 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
 
     IMaverickV2Factory public immutable factory;
     IMaverickV2Quoter public immutable quoter;
-    IWETH9 public immutable weth;
 
     /// @notice Constructor to initialize the adapter with factory, quoter, and
     /// WETH addresses.
     /// @param factory_ The address of the MaverickV2 factory.
     /// @param _quoter The address of the MaverickV2 quoter.
-    /// @param _weth The address of the WETH contract.
-    constructor(address factory_, address _quoter, address _weth) {
+    constructor(address factory_, address _quoter) {
         factory = IMaverickV2Factory(factory_);
         quoter = IMaverickV2Quoter(_quoter);
-        weth = IWETH9(_weth);
     }
 
     receive() external payable {}
@@ -39,11 +34,12 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
         uint256[] memory specifiedAmounts
     ) external override returns (Fraction[] memory calculatedPrices) {
         calculatedPrices = new Fraction[](specifiedAmounts.length);
+
+        IMaverickV2Pool pool = IMaverickV2Pool(address(bytes20(poolId)));
+
         for (uint256 i = 0; i < specifiedAmounts.length; i++) {
             calculatedPrices[i] = priceAt(
-                IMaverickV2Pool(address(bytes20(poolId))),
-                sellToken,
-                specifiedAmounts[i]
+                pool, sellToken, specifiedAmounts[i]
             );
         }
         return calculatedPrices;
@@ -53,20 +49,22 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
     /// @param pool The pool to calculate the price for.
     /// @param sellToken The token to calculate the price for.
     /// @param sellAmount The amount of the token to calculate the price for.
-    /// @return calculatedPrice The calculated price.
+    /// @return calculatedPrice The calculated price of the token.
     function priceAt(
         IMaverickV2Pool pool,
         address sellToken,
         uint256 sellAmount
     ) public returns (Fraction memory calculatedPrice) {
         bool isTokenAIn = (sellToken == address(pool.tokenA()));
-
+        int32 tickLimit = isTokenAIn
+            ? pool.getState().activeTick + 100
+            : pool.getState().activeTick - 100;
         (uint256 amountIn, uint256 amountOut,) = quoter.calculateSwap(
             pool,
             uint128(sellAmount),
             isTokenAIn,
             false,
-            isTokenAIn ? type(int32).max : type(int32).min
+            tickLimit
         );
 
         calculatedPrice = Fraction(amountOut, amountIn);
@@ -86,22 +84,19 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
 
         IMaverickV2Pool pool = IMaverickV2Pool(address(bytes20(poolId)));
         bool isTokenAIn = sellToken == address(pool.tokenA());
-        int32 tickLimit = isTokenAIn ? type(int32).max : type(int32).min;
-
+        int32 tickLimit = isTokenAIn
+            ? pool.getState().activeTick + 100
+            : pool.getState().activeTick - 100;
         uint256 gasBefore = gasleft();
 
         if (side == OrderSide.Buy) {
             trade.calculatedAmount =
                 buy(pool, isTokenAIn, tickLimit, specifiedAmount);
-            trade.calculatedAmount != 0
-                ? trade.price = Fraction(specifiedAmount, trade.calculatedAmount)
-                : trade.price = Fraction(0, 0);
+            trade.price = priceAt(pool, sellToken, trade.calculatedAmount);
         } else {
             trade.calculatedAmount =
-                sell(pool, sellToken, isTokenAIn, tickLimit, specifiedAmount);
-            trade.calculatedAmount != 0
-                ? trade.price = Fraction(trade.calculatedAmount, specifiedAmount)
-                : trade.price = Fraction(0, 0);
+                sell(pool, isTokenAIn, tickLimit, specifiedAmount);
+            trade.price = priceAt(pool, sellToken, specifiedAmount);
         }
 
         trade.gasUsed = gasBefore - gasleft();
@@ -135,14 +130,12 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
 
     /// @notice Sell tokens to a pool.
     /// @param pool The pool to sell to.
-    /// @param sellToken The token to sell.
     /// @param isTokenAIn Whether token A is the input token.
     /// @param tickLimit The tick limit for the swap.
     /// @param specifiedAmount The amount of the token to sell.
     /// @return calculatedAmount The amount of the token sold.
     function sell(
         IMaverickV2Pool pool,
-        address sellToken,
         bool isTokenAIn,
         int32 tickLimit,
         uint256 specifiedAmount
@@ -154,9 +147,9 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
             exactOutput: false,
             tickLimit: tickLimit
         });
-        // Pay the pool with the sell token
-        pay(IERC20(sellToken), msg.sender, address(pool), specifiedAmount);
-        (, uint256 amountOut) = pool.swap(msg.sender, swapParams, "");
+        // callback data is the sender address
+        bytes memory data = abi.encode(msg.sender);
+        (, uint256 amountOut) = pool.swap(msg.sender, swapParams, data);
         return amountOut;
     }
 
@@ -175,23 +168,7 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
             factory.isFactoryPool(IMaverickV2Pool(msg.sender)), "NotFactoryPool"
         );
         address payer = abi.decode(data, (address));
-        pay(tokenIn, payer, msg.sender, amountIn);
-    }
-
-    /// @notice Pay a recipient with a token.
-    /// @param token The token to pay with.
-    /// @param payer The payer of the token.
-    /// @param recipient The recipient of the token.
-    /// @param value The amount of the token to pay.
-    function pay(IERC20 token, address payer, address recipient, uint256 value)
-        internal
-    {
-        if (IWETH9(address(token)) == weth && address(this).balance >= value) {
-            weth.deposit{value: value}();
-            weth.transfer(recipient, value);
-        } else {
-            token.safeTransferFrom(payer, recipient, value);
-        }
+        tokenIn.safeTransferFrom(payer, msg.sender, amountIn);
     }
 
     /// @inheritdoc ISwapAdapter
@@ -208,11 +185,11 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
         uint256 r0 = state.reserveA;
         uint256 r1 = state.reserveB;
         if (sellToken < buyToken) {
-            limits[0] = r0 / RESERVE_LIMIT_FACTOR;
-            limits[1] = r1 / RESERVE_LIMIT_FACTOR;
+            limits[0] = r0;
+            limits[1] = r1;
         } else {
-            limits[0] = r1 / RESERVE_LIMIT_FACTOR;
-            limits[1] = r0 / RESERVE_LIMIT_FACTOR;
+            limits[0] = r1;
+            limits[1] = r0;
         }
     }
 
@@ -223,11 +200,10 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
         override
         returns (Capability[] memory capabilities)
     {
-        capabilities = new Capability[](4);
+        capabilities = new Capability[](3);
         capabilities[0] = Capability.SellOrder;
         capabilities[1] = Capability.BuyOrder;
         capabilities[2] = Capability.PriceFunction;
-        capabilities[3] = Capability.HardLimits;
     }
 
     /// @inheritdoc ISwapAdapter
@@ -278,6 +254,7 @@ interface IMaverickV2Pool {
         uint8 protocolFeeRatioD3;
     }
 
+    function fee(bool tokenAIn) external view returns (uint256);
     function tokenA() external view returns (IERC20);
     function tokenB() external view returns (IERC20);
     function factory() external view returns (IMaverickV2Factory);
