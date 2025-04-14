@@ -106,8 +106,8 @@ contract MaverickV2SwapAdapterTest is AdapterTest {
         bytes32 pair = bytes32(bytes20(GHO_USDC_POOL));
         uint256 amount = 10e18; // 10 GHO
 
-        deal(GHO, address(this), GHO_BALANCE); 
-        deal(USDC, address(this), USDC_BALANCE); 
+        deal(GHO, address(this), GHO_BALANCE);
+        deal(USDC, address(this), USDC_BALANCE);
 
         // Approve adapter to spend WETH
         vm.prank(address(this));
@@ -136,8 +136,8 @@ contract MaverickV2SwapAdapterTest is AdapterTest {
         bytes32 pair = bytes32(bytes20(GHO_USDC_POOL));
         uint256 amount = 100e18; // buy 100 GHO
 
-        deal(GHO, address(this), GHO_BALANCE); 
-        deal(USDC, address(this), USDC_BALANCE); 
+        deal(GHO, address(this), GHO_BALANCE);
+        deal(USDC, address(this), USDC_BALANCE);
 
         // Approve adapter to spend USDC
         vm.prank(address(this));
@@ -178,7 +178,7 @@ contract MaverickV2SwapAdapterTest is AdapterTest {
             // specify sell gho amount
             vm.assume(specifiedAmount < limits[0]);
 
-            deal(GHO, address(this), specifiedAmount); 
+            deal(GHO, address(this), specifiedAmount);
             IERC20(GHO).approve(address(adapter), specifiedAmount);
         }
 
@@ -225,14 +225,14 @@ contract MaverickV2SwapAdapterTest is AdapterTest {
         uint256[] memory amounts = new uint256[](TEST_ITERATIONS);
         for (uint256 i = 0; i < TEST_ITERATIONS; i++) {
             if (side == OrderSide.Sell) {
-                amounts[i] = 100 * (i + 1) * 10 ** 6; // specify sell usdc amount
+                amounts[i] = 100 * (i + 1) * 10 ** 6; // specify sell usdc
             } else {
-                amounts[i] = 100 * (i + 1) * 10 ** 18; // specify buy gho amount
+                amounts[i] = 100 * (i + 1) * 10 ** 18; // specify buy gho
             }
         }
 
-        deal(GHO, address(this), GHO_BALANCE); 
-        deal(USDC, address(this), USDC_BALANCE); 
+        deal(GHO, address(this), GHO_BALANCE);
+        deal(USDC, address(this), USDC_BALANCE);
 
         Trade[] memory trades = new Trade[](TEST_ITERATIONS);
         uint256 beforeSwap;

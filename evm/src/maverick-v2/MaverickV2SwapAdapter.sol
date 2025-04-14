@@ -38,9 +38,7 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
         IMaverickV2Pool pool = IMaverickV2Pool(address(bytes20(poolId)));
 
         for (uint256 i = 0; i < specifiedAmounts.length; i++) {
-            calculatedPrices[i] = priceAt(
-                pool, sellToken, specifiedAmounts[i]
-            );
+            calculatedPrices[i] = priceAt(pool, sellToken, specifiedAmounts[i]);
         }
         return calculatedPrices;
     }
@@ -60,11 +58,7 @@ contract MaverickV2SwapAdapter is ISwapAdapter {
             ? pool.getState().activeTick + 100
             : pool.getState().activeTick - 100;
         (uint256 amountIn, uint256 amountOut,) = quoter.calculateSwap(
-            pool,
-            uint128(sellAmount),
-            isTokenAIn,
-            false,
-            tickLimit
+            pool, uint128(sellAmount), isTokenAIn, false, tickLimit
         );
 
         calculatedPrice = Fraction(amountOut, amountIn);
