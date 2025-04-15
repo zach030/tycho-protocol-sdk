@@ -19,6 +19,7 @@ num-bigint = "0.4.6"
 hex = "0.4.3"
 itertools = "0.10.5"
 serde = "1.0.217"
+serde_qs = "0.13.0"
 serde-sibor = "0.1.0"
 
 

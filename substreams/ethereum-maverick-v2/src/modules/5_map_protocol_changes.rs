@@ -1,4 +1,4 @@
-use crate::pb::maverick::v2::Pool;
+use crate::{modules::utils::Params, pb::maverick::v2::Pool};
 use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -18,8 +18,8 @@ pub fn map_protocol_changes(
     pool_store: StoreGetProto<Pool>,
     balance_store: StoreDeltas,
 ) -> Result<BlockChanges> {
-    let factory_bytes = hex::decode(params).expect("Decoding failed");
-    let factory_address = factory_bytes.as_slice();
+    let params = Params::parse_from_query(&params)?;
+    let (factory_address, quoter_address) = params.decode_addresses()?;
     let mut transaction_changes: HashMap<_, TransactionChangesBuilder> = HashMap::new();
 
     protocol_components
@@ -60,7 +60,7 @@ pub fn map_protocol_changes(
             pool_store
                 .get_last(format!("Pool:0x{}", hex::encode(addr)))
                 .is_some() ||
-                addr.eq(factory_address)
+                addr.eq(factory_address.as_slice())
         },
         &mut transaction_changes,
     );
@@ -76,11 +76,20 @@ pub fn map_protocol_changes(
             addresses
                 .into_iter()
                 .for_each(|address| {
-                    if address != factory_address {
+                    if address != factory_address.as_slice() {
                         let pool = pool_store
                             .get_last(format!("Pool:0x{}", hex::encode(address)))
                             .unwrap();
                         change.mark_component_as_updated(&pool.address.to_hex());
+                        let changes = EntityChanges {
+                            component_id: pool.address.to_hex(),
+                            attributes: vec![Attribute {
+                                name: "stateless_contract_addr".to_string(),
+                                value: format!("0x{}", hex::encode(quoter_address)).into_bytes(),
+                                change: ChangeType::Creation.into(),
+                            }],
+                        };
+                        change.add_entity_change(&changes);
                     }
                 })
         });
