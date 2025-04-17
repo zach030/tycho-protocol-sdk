@@ -65,6 +65,26 @@ pub fn map_protocol_changes(
         &mut transaction_changes,
     );
 
+    block
+        .transactions()
+        .for_each(|block_tx| {
+            block_tx.calls.iter().for_each(|call| {
+                if call.address == quoter_address {
+                    let mut contract_change =
+                        InterimContractChange::new(call.address.as_slice(), true);
+
+                    if let Some(code_change) = &call.code_changes.first() {
+                        contract_change.set_code(&code_change.new_code);
+                    }
+
+                    let builder = transaction_changes
+                        .entry(block_tx.index.into())
+                        .or_insert_with(|| TransactionChangesBuilder::new(&(block_tx.into())));
+                    builder.add_contract_changes(&contract_change);
+                }
+            });
+        });
+
     transaction_changes
         .iter_mut()
         .for_each(|(_, change)| {
@@ -76,20 +96,13 @@ pub fn map_protocol_changes(
             addresses
                 .into_iter()
                 .for_each(|address| {
-                    if address != factory_address.as_slice() {
+                    // check if the address is not a pool
+                    if address != factory_address.as_slice() && address != quoter_address.as_slice()
+                    {
                         let pool = pool_store
                             .get_last(format!("Pool:0x{}", hex::encode(address)))
                             .unwrap();
                         change.mark_component_as_updated(&pool.address.to_hex());
-                        let changes = EntityChanges {
-                            component_id: pool.address.to_hex(),
-                            attributes: vec![Attribute {
-                                name: "stateless_contract_addr".to_string(),
-                                value: format!("0x{}", hex::encode(quoter_address)).into_bytes(),
-                                change: ChangeType::Creation.into(),
-                            }],
-                        };
-                        change.add_entity_change(&changes);
                     }
                 })
         });
