@@ -21,7 +21,7 @@ binaries:
 modules:
   - name: map_components
     kind: map
-    initialBlock: 20027246
+    initialBlock: 20027246 # quoter creation block
     inputs:
       - params: string
       - source: sf.ethereum.type.v2.Block
