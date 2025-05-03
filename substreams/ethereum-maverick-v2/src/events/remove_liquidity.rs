@@ -13,6 +13,7 @@ impl BalanceEventTrait for PoolRemoveLiquidity {
                 token: pool.token_a.clone(),
                 delta: self
                     .token_a_out
+                    .neg()
                     .clone()
                     .to_signed_bytes_be(),
                 component_id: pool
@@ -28,6 +29,7 @@ impl BalanceEventTrait for PoolRemoveLiquidity {
                 token: pool.token_b.clone(),
                 delta: self
                     .token_b_out
+                    .neg()
                     .clone()
                     .to_signed_bytes_be(),
                 component_id: pool

@@ -7,7 +7,7 @@ impl BalanceEventTrait for PoolSwap {
         let (token_in, token_out, amount_in, amount_out) = if self.params.1 {
             (&pool.token_a, &pool.token_b, &self.amount_in, &self.amount_out)
         } else {
-            (&pool.token_b, &pool.token_a, &self.amount_out, &self.amount_in)
+            (&pool.token_b, &pool.token_a, &self.amount_in, &self.amount_out)
         };
 
         vec![
