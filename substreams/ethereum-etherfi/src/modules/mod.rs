@@ -16,5 +16,6 @@ mod map_relative_balances;
 #[path = "4_store_balances.rs"]
 mod store_balances;
 
+mod consts;
 #[path = "5_map_protocol_changes.rs"]
 mod map_protocol_changes;
