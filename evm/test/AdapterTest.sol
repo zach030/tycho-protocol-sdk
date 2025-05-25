@@ -2,12 +2,16 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
-import "openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+import {
+    IERC20,
+    SafeERC20
+} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ISwapAdapter} from "src/interfaces/ISwapAdapter.sol";
 import "src/interfaces/ISwapAdapterTypes.sol";
 import "src/libraries/FractionMath.sol";
 
 contract AdapterTest is Test, ISwapAdapterTypes {
+    using SafeERC20 for IERC20;
     using FractionMath for Fraction;
 
     uint256 constant pricePrecision = 10e24;
@@ -29,8 +33,8 @@ contract AdapterTest is Test, ISwapAdapterTypes {
         );
         for (uint256 i = 0; i < poolIds.length; i++) {
             address[] memory tokens = adapter.getTokens(poolIds[i]);
-            IERC20(tokens[0]).approve(address(adapter), type(uint256).max);
-            IERC20(tokens[1]).approve(address(adapter), type(uint256).max);
+            IERC20(tokens[0]).safeIncreaseAllowance(address(adapter), type(uint256).max);
+            IERC20(tokens[1]).safeIncreaseAllowance(address(adapter), type(uint256).max);
 
             testPricesForPair(
                 adapter, poolIds[i], tokens[0], tokens[1], hasPriceImpact

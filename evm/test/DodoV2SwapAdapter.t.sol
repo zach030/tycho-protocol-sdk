@@ -9,6 +9,7 @@ import "src/dodo-v2/DodoV2SwapAdapter.sol";
 import "forge-std/console.sol";
 
 contract DodoV2SwapAdapterTest is AdapterTest {
+    using SafeERC20 for IERC20;
     using FractionMath for Fraction;
 
     DodoV2SwapAdapter adapter;
@@ -45,9 +46,9 @@ contract DodoV2SwapAdapterTest is AdapterTest {
         bytes32 pair = bytes32(bytes20(USDT_USDC_POOL));
         uint256[] memory limits = adapter.getLimits(pair, USDT, USDC);
         vm.assume(amount0 < limits[0]);
-        vm.assume(amount1 < limits[0]);
-        vm.assume(amount0 > 1e16);
-        vm.assume(amount1 > 1e16);
+        vm.assume(amount1 < limits[1]);
+        vm.assume(amount0 > 100e16);
+        vm.assume(amount1 > 100e16);
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = amount0;
@@ -103,9 +104,9 @@ contract DodoV2SwapAdapterTest is AdapterTest {
         deal(USDT, address(this), USDT_BALANCE);
         deal(USDC, address(this), USDC_BALANCE);
 
-        // Approve adapter to spend WETH
+        // Approve adapter to spend USDT
         vm.prank(address(this));
-        IERC20(USDT).approve(address(adapter), amount);
+        IERC20(USDT).safeIncreaseAllowance(address(adapter), amount);
 
         Trade memory trade =
             adapter.swap(pair, USDT, USDC, OrderSide.Sell, amount);
@@ -128,14 +129,14 @@ contract DodoV2SwapAdapterTest is AdapterTest {
 
     function testSwapBuy() public {
         bytes32 pair = bytes32(bytes20(USDT_USDC_POOL));
-        uint256 amount = 100e18; // buy 100 GHO
+        uint256 amount = 100e18; // buy 100 USDT
 
         deal(USDT, address(this), USDT_BALANCE);
         deal(USDC, address(this), USDC_BALANCE);
 
         // Approve adapter to spend USDC
         vm.prank(address(this));
-        IERC20(USDC).approve(address(adapter), USDC_BALANCE);
+        IERC20(USDC).safeIncreaseAllowance(address(adapter), USDC_BALANCE);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -155,7 +156,7 @@ contract DodoV2SwapAdapterTest is AdapterTest {
         vm.assume(specifiedAmount < limits[0]);
 
         deal(USDT, address(this), specifiedAmount);
-        IERC20(USDT).approve(address(adapter), specifiedAmount);
+        IERC20(USDT).safeIncreaseAllowance(address(adapter), specifiedAmount);
 
         uint256 usdt_balance = IERC20(USDT).balanceOf(address(this));
         uint256 usdc_balance = IERC20(USDC).balanceOf(address(this));
@@ -195,7 +196,7 @@ contract DodoV2SwapAdapterTest is AdapterTest {
         for (uint256 i = 0; i < TEST_ITERATIONS; i++) {
             beforeSwap = vm.snapshot();
 
-            IERC20(USDT).approve(address(adapter), USDC_BALANCE);
+            IERC20(USDT).safeIncreaseAllowance(address(adapter), USDC_BALANCE);
 
             trades[i] = adapter.swap(pair, USDT, USDC, side, amounts[i]);
             vm.revertTo(beforeSwap);
