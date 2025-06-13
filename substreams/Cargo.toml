@@ -16,6 +16,7 @@ members = [
     "ethereum-uniswap-v4",
     "ethereum-ekubo-v2",
     "ethereum-maverick-v2",
+    "base-aerodrome-v1",
     "base-aerodrome-slipstream"
 ]
 resolver = "2"
