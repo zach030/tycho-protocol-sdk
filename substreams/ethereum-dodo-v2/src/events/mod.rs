@@ -1,14 +1,22 @@
-use substreams_ethereum::Event;
-use substreams_ethereum::pb::eth::v2::{Log, StorageChange};
-use tycho_substreams::models::Transaction;
-use tycho_substreams::prelude::{Attribute, BalanceDelta};
-use crate::abi::GSP::events::{BuyShares, DodoSwap, RChange, SellShares};
-use crate::pb::dodo::v2::Pool;
+use crate::{
+    abi::GSP::events::{BuyShares, DodoSwap, RChange, SellShares},
+    pb::dodo::v2::Pool,
+};
+use substreams_ethereum::{
+    pb::eth::v2::{Log, StorageChange},
+    Event,
+};
+use tycho_substreams::{
+    models::Transaction,
+    prelude::{Attribute, BalanceDelta},
+};
+use crate::abi::GSP::events::MtFeeRateChange;
 
-pub mod swap;
 pub mod buy_shares;
+pub mod rchange;
 pub mod sell_shares;
-mod rchange;
+pub mod swap;
+pub mod mt_fee_rate_change;
 
 /// A trait for extracting changed attributes and balance from an event.
 pub trait EventTrait {
@@ -26,7 +34,7 @@ pub trait EventTrait {
     fn get_changed_attributes(
         &self,
         storage_changes: &[StorageChange],
-        pool_address: &[u8; 20],
+        pool: &Pool,
     ) -> Vec<Attribute>;
 
     /// Get all balance deltas from the event.
@@ -48,16 +56,18 @@ pub enum EventType {
     DodoSwap(DodoSwap),
     BuyShares(BuyShares),
     SellShares(SellShares),
-    RChange(RChange)
+    RChange(RChange),
+    MtFeeRateChange(MtFeeRateChange),
 }
 
-impl EventType{
+impl EventType {
     fn as_event_trait(&self) -> &dyn EventTrait {
         match self {
             EventType::DodoSwap(event) => event,
             EventType::BuyShares(event) => event,
             EventType::SellShares(event) => event,
             EventType::RChange(event) => event,
+            EventType::MtFeeRateChange(event) => event,
         }
     }
 }
@@ -95,12 +105,12 @@ pub fn decode_event(event: &Log) -> Option<EventType> {
 pub fn get_log_changed_attributes(
     event: &Log,
     storage_changes: &[StorageChange],
-    pool_address: &[u8; 20],
+    pool: &Pool,
 ) -> Vec<Attribute> {
     decode_event(event)
         .map(|e| {
             e.as_event_trait()
-                .get_changed_attributes(storage_changes, pool_address)
+                .get_changed_attributes(storage_changes, pool)
         })
         .unwrap_or_default()
 }

@@ -21,8 +21,8 @@ itertools = "0.10.5"
 serde = "1.0.217"
 serde_qs = "0.13.0"
 serde-sibor = "0.1.0"
-
-
+hex-literal = "0.4.1"
+tiny-keccak = "2.0"
 [build-dependencies]
 anyhow = "1"
 substreams-ethereum = "0.9.9"

@@ -1,17 +1,13 @@
-use crate::{
-    abi::GSP::events::RChange, events::EventTrait, pb::dodo::v2::Pool,
-    storage::pool_storage::DoDoPoolStorage,
-};
 use substreams_ethereum::pb::eth::v2::StorageChange;
 use substreams_helper::storage_change::StorageChangesFilter;
 use tycho_substreams::models::{Attribute, BalanceDelta, Transaction};
+use crate::abi::GSP::events::MtFeeRateChange;
+use crate::events::EventTrait;
+use crate::pb::dodo::v2::Pool;
+use crate::storage::pool_storage::DoDoPoolStorage;
 
-impl EventTrait for RChange {
-    fn get_changed_attributes(
-        &self,
-        storage_changes: &[StorageChange],
-        pool: &Pool,
-    ) -> Vec<Attribute> {
+impl EventTrait for MtFeeRateChange {
+    fn get_changed_attributes(&self, storage_changes: &[StorageChange], pool: &Pool) -> Vec<Attribute> {
         let storage_vec = storage_changes.to_vec();
         let filtered_storage_changes = storage_vec
             .filter_by_address(

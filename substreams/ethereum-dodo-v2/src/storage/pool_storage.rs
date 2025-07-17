@@ -1,7 +1,8 @@
+use crate::storage::constants::{DPP_PMM_SLOTS, DSP_PMM_SLOTS, DVM_PMM_SLOTS, GSP_PMM_SLOTS};
+use crate::storage::utils::read_bytes;
 use substreams::prelude::BigInt;
 use substreams_ethereum::pb::eth::v2::StorageChange;
 use tycho_substreams::prelude::{Attribute, ChangeType};
-use crate::storage::utils::read_bytes;
 
 /// `StorageLocation` is a struct that represents a specific location within a contract's storage
 /// associated with a name.
@@ -26,28 +27,26 @@ pub struct StorageLocation<'a> {
 }
 
 pub struct DoDoPoolStorage<'a> {
+    pub pool_type: &'a str,
     pub storage_changes: &'a Vec<StorageChange>,
 }
 
 impl<'a> DoDoPoolStorage<'a> {
-    pub fn new(storage_changes: &'a Vec<StorageChange>) -> DoDoPoolStorage<'a> {
-        Self { storage_changes }
+    pub fn new(pool_type: &'a str, storage_changes: &'a Vec<StorageChange>) -> DoDoPoolStorage<'a> {
+        Self { pool_type, storage_changes }
     }
 
-    /// Iterates through storage changes and checks for modifications in the provided list of
-    /// storage locations. For each change, it compares the old and new values at the specified
-    /// offset and length for that location. If a change is detected, it's added to the returned
-    /// `Attribute` list.
-    ///
-    /// Arguments:
-    ///     locations: Vec<&StorageLocation> - A vector of references to StorageLocation objects
-    /// that define the slots, offsets, and lengths to be checked for changes.
-    ///
-    /// Returns:
-    ///     `Vec<Attribute>`: A vector containing Attributes for each change detected in the tracked
-    /// slots. Returns an empty vector if no changes are detected.
-    pub fn get_changed_attributes(&self, locations: Vec<&StorageLocation>) -> Vec<Attribute> {
+    pub fn get_changed_attributes(&self) -> Vec<Attribute> {
         let mut attributes = Vec::new();
+        let locations = match self.pool_type {
+            "gsp" => GSP_PMM_SLOTS.to_vec(),
+            "dpp" => DPP_PMM_SLOTS.to_vec(),
+            "dsp" => DSP_PMM_SLOTS.to_vec(),
+            "dvm" => DVM_PMM_SLOTS.to_vec(),
+            _ => {
+                vec![]
+            }
+        };
 
         // For each storage change, check if it changes a tracked slot.
         // If it does, add the attribute to the list of attributes
