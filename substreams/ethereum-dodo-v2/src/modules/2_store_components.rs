@@ -18,7 +18,9 @@ pub fn store_components(
                 base_token: pc.tokens[0].clone(),
                 quote_token: pc.tokens[1].clone(),
                 created_tx_hash: tx_pc.tx.as_ref().unwrap().hash.clone(),
-                pool_type: pc.get_attribute_value("pool_type").unwrap_or_default(),
+                pool_type: pc
+                    .get_attribute_value("pool_type")
+                    .unwrap_or_default(),
             };
             store.set_if_not_exists(0, format!("Pool:{pool_address}"), &pool);
         }

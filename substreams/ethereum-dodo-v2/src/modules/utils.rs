@@ -23,7 +23,11 @@ impl Params {
             hex::decode(&self.dvm_factory).map_err(|e| anyhow!("Invalid factory hex: {}", e))?;
         let gsp_factory =
             hex::decode(&self.gsp_factory).map_err(|e| anyhow!("Invalid factory hex: {}", e))?;
-        if dpp_factory.len() != 20 || dsp_factory.len() != 20 || dvm_factory.len() != 20 || gsp_factory.len() != 20 {
+        if dpp_factory.len() != 20 ||
+            dsp_factory.len() != 20 ||
+            dvm_factory.len() != 20 ||
+            gsp_factory.len() != 20
+        {
             return Err(anyhow!("Addresses must be 20 bytes"));
         }
         Ok((
