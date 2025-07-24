@@ -13,7 +13,7 @@ use tycho_substreams::prelude::Attribute;
 
 pub mod burn;
 pub mod collect;
-pub mod collect_fee_protocol;
+pub mod collect_fee;
 pub mod flash;
 pub mod initialize;
 pub mod mint;
