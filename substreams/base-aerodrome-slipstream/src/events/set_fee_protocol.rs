@@ -6,7 +6,7 @@ use crate::{
     storage::{constants::TRACKED_SLOTS, pool_storage::UniswapPoolStorage},
 };
 use substreams_helper::storage_change::StorageChangesFilter;
-use tycho_substreams::prelude::Attribute;
+use tycho_substreams::prelude::{Attribute, Transaction};
 
 use super::{BalanceDelta, EventTrait};
 
@@ -29,7 +29,7 @@ impl EventTrait for SetFeeProtocol {
         pool_storage.get_changed_attributes(TRACKED_SLOTS.to_vec().iter().collect())
     }
 
-    fn get_balance_delta(&self, _pool: &Pool, _ordinal: u64) -> Vec<BalanceDelta> {
+    fn get_balance_delta(&self, tx: &Transaction, _pool: &Pool, _ordinal: u64) -> Vec<BalanceDelta> {
         vec![]
     }
 }

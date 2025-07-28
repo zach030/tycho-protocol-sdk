@@ -1,5 +1,5 @@
 use substreams_ethereum::pb::eth::v2::StorageChange;
-
+use substreams_helper::hex::Hexable;
 use super::{BalanceDelta, EventTrait};
 use crate::{
     abi::clpool::events::Mint,
@@ -7,7 +7,7 @@ use crate::{
     storage::{constants::TRACKED_SLOTS, pool_storage::UniswapPoolStorage},
 };
 use substreams_helper::storage_change::StorageChangesFilter;
-use tycho_substreams::prelude::Attribute;
+use tycho_substreams::prelude::{Attribute, Transaction};
 
 impl EventTrait for Mint {
     fn get_changed_attributes(
@@ -36,21 +36,31 @@ impl EventTrait for Mint {
         changed_attributes
     }
 
-    fn get_balance_delta(&self, pool: &Pool, ordinal: u64) -> Vec<BalanceDelta> {
+    fn get_balance_delta(&self, tx: &Transaction, pool: &Pool, ordinal: u64) -> Vec<BalanceDelta> {
         let changed_balance = vec![
             BalanceDelta {
-                token_address: pool.token0.clone(),
-                amount: self.amount0.clone().to_bytes_le().1,
-                sign: true,
-                pool_address: pool.address.clone(),
-                ordinal,
+                ord: ordinal,
+                tx: Some(tx.clone()),
+                token: pool.token0.clone(),
+                delta:  self.amount0.clone().to_bytes_le().1,
+                component_id: pool
+                    .address
+                    .clone()
+                    .to_hex()
+                    .as_bytes()
+                    .to_vec(),
             },
             BalanceDelta {
-                token_address: pool.token1.clone(),
-                amount: self.amount1.clone().to_bytes_le().1,
-                sign: true,
-                pool_address: pool.address.clone(),
-                ordinal,
+                ord: ordinal,
+                tx: Some(tx.clone()),
+                token: pool.token1.clone(),
+                delta: self.amount1.clone().to_bytes_le().1,
+                component_id: pool
+                    .address
+                    .clone()
+                    .to_hex()
+                    .as_bytes()
+                    .to_vec(),
             },
         ];
         changed_balance

@@ -7,9 +7,9 @@ use crate::{
     abi::clpool::events::{
         Burn, Collect, Flash, Initialize, Mint, SetFeeProtocol, Swap,
     },
-    pb::aerodrome::slipstream::{BalanceDelta, Pool},
+    pb::aerodrome::slipstream::Pool,
 };
-use tycho_substreams::prelude::Attribute;
+use tycho_substreams::prelude::{Attribute, BalanceDelta, Transaction};
 
 pub mod burn;
 pub mod collect;
@@ -50,7 +50,7 @@ pub trait EventTrait {
     /// # Returns
     ///
     /// A vector of `BalanceDelta` that represents the balance deltas.
-    fn get_balance_delta(&self, pool: &Pool, ordinal: u64) -> Vec<BalanceDelta>;
+    fn get_balance_delta(&self, tx: &Transaction, pool: &Pool, ordinal: u64) -> Vec<BalanceDelta>;
 }
 
 /// Represent every events of a UniswapV3 pool.
@@ -138,11 +138,11 @@ pub fn get_log_changed_attributes(
 /// # Returns
 ///
 /// A vector of `BalanceDelta` that represents
-pub fn get_log_changed_balances(event: &Log, pool: &Pool) -> Vec<BalanceDelta> {
+pub fn get_log_changed_balances(tx: &Transaction, event: &Log, pool: &Pool) -> Vec<BalanceDelta> {
     decode_event(event)
         .map(|e| {
             e.as_event_trait()
-                .get_balance_delta(pool, event.ordinal)
+                .get_balance_delta(tx, pool, event.ordinal)
         })
         .unwrap_or_default()
 }

@@ -8,7 +8,7 @@ use crate::{
 };
 
 use super::{BalanceDelta, EventTrait};
-use tycho_substreams::prelude::Attribute;
+use tycho_substreams::prelude::{Attribute, Transaction};
 
 impl EventTrait for Burn {
     fn get_changed_attributes(
@@ -37,7 +37,7 @@ impl EventTrait for Burn {
         changed_attributes
     }
 
-    fn get_balance_delta(&self, _pool: &Pool, _ordinal: u64) -> Vec<BalanceDelta> {
+    fn get_balance_delta(&self, tx: &Transaction, _pool: &Pool, _ordinal: u64) -> Vec<BalanceDelta> {
         // Burn event balances deltas are accounted for by the Collect event.
         // In the case of a burn, the Collect event amounts will include both the burned amount and
         // the fees earned.

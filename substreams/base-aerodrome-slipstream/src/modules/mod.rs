@@ -1,5 +1,5 @@
 pub use map_pool_created::map_pools_created;
-pub use map_pool_events::map_pool_events;
+pub use map_protocol_changes::map_protocol_changes;
 pub use store_pools::store_pools;
 
 #[path = "1_map_pool_created.rs"]
@@ -14,5 +14,5 @@ mod map_balance_changes;
 #[path = "4_store_pools_balances.rs"]
 mod store_pools_balances;
 
-#[path = "5_map_pool_events.rs"]
-mod map_pool_events;
+#[path = "5_map_protocol_changes.rs"]
+mod map_protocol_changes;
