@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
+use tiny_keccak::{Hasher, Keccak};
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -36,5 +37,35 @@ impl Params {
             dvm_factory.try_into().unwrap(),
             gsp_factory.try_into().unwrap(),
         ))
+    }
+}
+
+pub fn fn_selector(signature: &str) -> [u8; 4] {
+    let mut hasher = Keccak::v256();
+    let mut hash = [0u8; 32];
+    hasher.update(signature.as_bytes());
+    hasher.finalize(&mut hash);
+    let mut selector = [0u8; 4];
+    selector.copy_from_slice(&hash[..4]);
+    selector
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hex_literal::hex;
+
+    #[test]
+    fn test_sell_shares_selector() {
+        let sig = "sellShares(uint256,address,uint256,uint256,bytes,uint256)";
+        let expected = hex!("b56ceaa6");
+        assert_eq!(fn_selector(sig), expected);
+    }
+
+    #[test]
+    fn test_buy_shares_selector() {
+        let sig = "buyShares(address)";
+        let expected = hex!("4c85b425");
+        assert_eq!(fn_selector(sig), expected);
     }
 }
