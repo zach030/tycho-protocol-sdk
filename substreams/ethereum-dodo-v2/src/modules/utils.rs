@@ -10,12 +10,19 @@ pub struct Params {
     pub gsp_factory: String,
 }
 
+pub struct DodoFactories {
+    pub dpp_factory: [u8; 20],
+    pub dsp_factory: [u8; 20],
+    pub dvm_factory: [u8; 20],
+    pub gsp_factory: [u8; 20],
+}
+
 impl Params {
     pub fn parse_from_query(input: &str) -> Result<Self> {
         serde_qs::from_str(input).map_err(|e| anyhow!("Failed to parse query params: {}", e))
     }
 
-    pub fn decode_addresses(&self) -> Result<([u8; 20], [u8; 20], [u8; 20], [u8; 20])> {
+    pub fn decode_addresses(&self) -> Result<DodoFactories> {
         let dpp_factory =
             hex::decode(&self.dpp_factory).map_err(|e| anyhow!("Invalid factory hex: {}", e))?;
         let dsp_factory =
@@ -31,12 +38,12 @@ impl Params {
         {
             return Err(anyhow!("Addresses must be 20 bytes"));
         }
-        Ok((
-            dpp_factory.try_into().unwrap(),
-            dsp_factory.try_into().unwrap(),
-            dvm_factory.try_into().unwrap(),
-            gsp_factory.try_into().unwrap(),
-        ))
+        Ok(DodoFactories {
+            dpp_factory: dpp_factory.try_into().unwrap(),
+            dsp_factory: dsp_factory.try_into().unwrap(),
+            dvm_factory: dvm_factory.try_into().unwrap(),
+            gsp_factory: gsp_factory.try_into().unwrap(),
+        })
     }
 }
 

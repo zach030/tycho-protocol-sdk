@@ -1,5 +1,5 @@
 use crate::{
-    abi::GSP::events::{BuyShares, DodoSwap, MtFeeRateChange, RChange, SellShares},
+    abi::gsp::events::{BuyShares, DodoSwap, MtFeeRateChange, RChange, SellShares},
     pb::dodo::v2::Pool,
     storage::pool_storage::DoDoPoolStorage,
 };

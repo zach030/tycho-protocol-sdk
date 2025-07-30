@@ -1,5 +1,5 @@
 use crate::{
-    abi::GSP::events::{BuyShares, DodoSwap, SellShares},
+    abi::gsp::events::{BuyShares, DodoSwap, SellShares},
     modules::utils::fn_selector,
     pb::dodo::v2::Pool,
 };
@@ -26,7 +26,7 @@ pub fn map_relative_balances(
             .filter(|call| !call.state_reverted)
             .flat_map(|call| &call.logs)
         {
-            if let Some(balance_deltas) = decode_event_balance_deltas(log, &trx, &pools_store) {
+            if let Some(balance_deltas) = decode_event_balance_deltas(log, trx, &pools_store) {
                 tx_deltas.extend(balance_deltas);
             }
         }
@@ -101,48 +101,45 @@ fn decode_event_balance_deltas(
         ]);
     }
 
-    if let Some(_) = BuyShares::match_and_decode(event) {
+    if BuyShares::match_and_decode(event).is_some() {
         let buy_share_selector = fn_selector("buyShares(address)");
         for call in &tx_trace.calls {
             if call.address == event.address &&
                 call.input
                     .starts_with(&buy_share_selector)
             {
-                let output_result = crate::abi::GSP::functions::BuyShares::output_call(call);
-                match output_result {
-                    Result::Ok((_, base_input, quote_input)) => {
-                        return Some(vec![
-                            BalanceDelta {
-                                ord: event.ordinal,
-                                tx: Some(tx.clone()),
-                                token: pool.base_token.clone(),
-                                delta: base_input.to_signed_bytes_be(),
-                                component_id: pool
-                                    .address
-                                    .to_hex()
-                                    .as_bytes()
-                                    .to_vec(),
-                            },
-                            BalanceDelta {
-                                ord: event.ordinal,
-                                tx: Some(tx.clone()),
-                                token: pool.quote_token.clone(),
-                                delta: quote_input.to_signed_bytes_be(),
-                                component_id: pool
-                                    .address
-                                    .to_hex()
-                                    .as_bytes()
-                                    .to_vec(),
-                            },
-                        ]);
-                    }
-                    Err(_) => {}
+                let output_result = crate::abi::gsp::functions::BuyShares::output_call(call);
+                if let Result::Ok((_, base_input, quote_input)) = output_result {
+                    return Some(vec![
+                        BalanceDelta {
+                            ord: event.ordinal,
+                            tx: Some(tx.clone()),
+                            token: pool.base_token.clone(),
+                            delta: base_input.to_signed_bytes_be(),
+                            component_id: pool
+                                .address
+                                .to_hex()
+                                .as_bytes()
+                                .to_vec(),
+                        },
+                        BalanceDelta {
+                            ord: event.ordinal,
+                            tx: Some(tx.clone()),
+                            token: pool.quote_token.clone(),
+                            delta: quote_input.to_signed_bytes_be(),
+                            component_id: pool
+                                .address
+                                .to_hex()
+                                .as_bytes()
+                                .to_vec(),
+                        },
+                    ]);
                 }
             }
         }
     }
 
-    if let Some(_) = SellShares::match_and_decode(event) {
+    if SellShares::match_and_decode(event).is_some() {
         let sell_share_selector =
             fn_selector("sellShares(uint256,address,uint256,uint256,bytes,uint256)");
         for call in &tx_trace.calls {
@@ -150,35 +147,32 @@ fn decode_event_balance_deltas(
                 call.input
                     .starts_with(&sell_share_selector)
             {
-                let output_result = crate::abi::GSP::functions::SellShares::output_call(call);
-                match output_result {
-                    Result::Ok((base_output, quote_output)) => {
-                        return Some(vec![
-                            BalanceDelta {
-                                ord: event.ordinal,
-                                tx: Some(tx.clone()),
-                                token: pool.base_token.clone(),
-                                delta: base_output.neg().to_signed_bytes_be(),
-                                component_id: pool
-                                    .address
-                                    .to_hex()
-                                    .as_bytes()
-                                    .to_vec(),
-                            },
-                            BalanceDelta {
-                                ord: event.ordinal,
-                                tx: Some(tx.clone()),
-                                token: pool.quote_token.clone(),
-                                delta: quote_output.neg().to_signed_bytes_be(),
-                                component_id: pool
-                                    .address
-                                    .to_hex()
-                                    .as_bytes()
-                                    .to_vec(),
-                            },
-                        ]);
-                    }
-                    Err(_) => {}
+                let output_result = crate::abi::gsp::functions::SellShares::output_call(call);
+                if let Result::Ok((base_output, quote_output)) = output_result {
+                    return Some(vec![
+                        BalanceDelta {
+                            ord: event.ordinal,
+                            tx: Some(tx.clone()),
+                            token: pool.base_token.clone(),
+                            delta: base_output.neg().to_signed_bytes_be(),
+                            component_id: pool
+                                .address
+                                .to_hex()
+                                .as_bytes()
+                                .to_vec(),
+                        },
+                        BalanceDelta {
+                            ord: event.ordinal,
+                            tx: Some(tx.clone()),
+                            token: pool.quote_token.clone(),
+                            delta: quote_output.neg().to_signed_bytes_be(),
+                            component_id: pool
+                                .address
+                                .to_hex()
+                                .as_bytes()
+                                .to_vec(),
+                        },
+                    ]);
                 }
             }
         }

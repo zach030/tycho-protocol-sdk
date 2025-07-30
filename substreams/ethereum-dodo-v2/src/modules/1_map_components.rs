@@ -1,7 +1,7 @@
 use crate::{
     abi::{
-        DPPFactory::events::NewDpp, DSPFactory::events::NewDsp, DVMFactory::events::NewDvm,
-        GSPFactory::events::NewGsp,
+        dpp_factory::events::NewDpp, dsp_factory::events::NewDsp, dvm_factory::events::NewDvm,
+        gsp_factory::events::NewGsp,
     },
     modules::utils::Params,
 };
@@ -28,7 +28,7 @@ fn handle_new_dpp(event: NewDpp, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_tokens(&tokens)
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "dpp")])
-        .as_swap_type("dodo_v2_pool", ImplementationType::Custom.into());
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -41,7 +41,7 @@ fn handle_new_dsp(event: NewDsp, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_tokens(&tokens)
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "dsp")])
-        .as_swap_type("dodo_v2_pool", ImplementationType::Custom.into());
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -54,7 +54,7 @@ fn handle_new_dvm(event: NewDvm, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_tokens(&tokens)
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "dvm")])
-        .as_swap_type("dodo_v2_pool", ImplementationType::Custom.into());
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -67,7 +67,7 @@ fn handle_new_gsp(event: NewGsp, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_tokens(&tokens)
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "gsp")])
-        .as_swap_type("dodo_v2_pool", ImplementationType::Custom.into());
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -77,8 +77,13 @@ fn get_new_pools(
     block: &Block,
     new_pools: &mut Vec<TransactionProtocolComponents>,
 ) {
-    let (dpp_factory, dsp_factory, dvm_factory, gsp_factory) = params.decode_addresses().unwrap();
-
+    let dodo_factories = params.decode_addresses().unwrap();
+    let (dpp_factory, dsp_factory, dvm_factory, gsp_factory) = (
+        dodo_factories.dpp_factory,
+        dodo_factories.dsp_factory,
+        dodo_factories.dvm_factory,
+        dodo_factories.gsp_factory,
+    );
     let mut eh = EventHandler::new(block);
     eh.filter_by_address(vec![
         Address::from_slice(&dpp_factory),
