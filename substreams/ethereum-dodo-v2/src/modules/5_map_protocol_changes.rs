@@ -1,16 +1,9 @@
-use crate::{
-    abi::gsp::events::{BuyShares, DodoSwap, MtFeeRateChange, RChange, SellShares},
-    pb::dodo::v2::Pool,
-    storage::pool_storage::DoDoPoolStorage,
-};
+use crate::{pb::dodo::v2::Pool, storage::pool_storage::DoDoPoolStorage};
 use anyhow::Result;
 use itertools::Itertools;
 use std::collections::HashMap;
 use substreams::{pb::substreams::StoreDeltas, prelude::StoreGetProto, store::StoreGet};
-use substreams_ethereum::{
-    pb::eth::v2::{Block, Log, StorageChange},
-    Event,
-};
+use substreams_ethereum::pb::eth::v2::{Block, StorageChange};
 use substreams_helper::{hex::Hexable, storage_change::StorageChangesFilter};
 use tycho_substreams::{
     balances::aggregate_balances_changes, contract::extract_contract_changes_builder, prelude::*,
@@ -58,7 +51,7 @@ pub fn map_protocol_changes(
             // Skip if the log is not from a known dodo pool.
             if let Some(pool) = pool_store.get_last(format!("Pool:{}", &log.address.to_hex())) {
                 let changed_attributes =
-                    decode_event_changed_attributes(log, &call_view.call.storage_changes, &pool);
+                    decode_event_changed_attributes(&call_view.call.storage_changes, &pool);
 
                 let entity_change = EntityChanges {
                     component_id: pool.address.clone().to_hex(),
@@ -124,19 +117,9 @@ pub fn map_protocol_changes(
 }
 
 fn decode_event_changed_attributes(
-    event: &Log,
     storage_changes: &[StorageChange],
     pool: &Pool,
 ) -> Vec<Attribute> {
-    let is_supported_event = DodoSwap::match_and_decode(event).is_some() ||
-        BuyShares::match_and_decode(event).is_some() ||
-        SellShares::match_and_decode(event).is_some() ||
-        RChange::match_and_decode(event).is_some() ||
-        MtFeeRateChange::match_and_decode(event).is_some();
-
-    if !is_supported_event {
-        return vec![];
-    }
     let storage_vec = storage_changes.to_vec();
     let filtered_storage_changes = storage_vec
         .filter_by_address(

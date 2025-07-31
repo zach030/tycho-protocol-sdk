@@ -1,7 +1,9 @@
 use crate::{
     abi::{
-        dpp_factory::events::NewDpp, dsp_factory::events::NewDsp, dvm_factory::events::NewDvm,
-        gsp_factory::events::NewGsp,
+        dpp_factory::events::{NewDpp, RemoveDpp},
+        dsp_factory::events::{NewDsp, RemoveDsp},
+        dvm_factory::events::{NewDvm, RemoveDvm},
+        gsp_factory::events::{NewGsp, RemoveGsp},
     },
     modules::utils::Params,
 };
@@ -33,6 +35,19 @@ fn handle_new_dpp(event: NewDpp, tx: &TransactionTrace) -> TransactionProtocolCo
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
 
+fn handle_remove_dpp(event: RemoveDpp, tx: &TransactionTrace) -> TransactionProtocolComponents {
+    let tycho_tx: Transaction = tx.into();
+    let contracts = [event.dpp.as_slice()];
+    let mut component = ProtocolComponent::new(&event.dpp.to_hex())
+        .with_contracts(&contracts)
+        .with_attributes(&[("pool_type", "dpp")])
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+
+    component.set_change(ChangeType::Deletion);
+
+    TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
+}
+
 fn handle_new_dsp(event: NewDsp, tx: &TransactionTrace) -> TransactionProtocolComponents {
     let tycho_tx: Transaction = tx.into();
     let tokens = [event.base_token.as_slice(), event.quote_token.as_slice()];
@@ -42,6 +57,18 @@ fn handle_new_dsp(event: NewDsp, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "dsp")])
         .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+
+    TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
+}
+
+fn handle_remove_dsp(event: RemoveDsp, tx: &TransactionTrace) -> TransactionProtocolComponents {
+    let tycho_tx: Transaction = tx.into();
+    let contracts = [event.dsp.as_slice()];
+    let mut component = ProtocolComponent::new(&event.dsp.to_hex())
+        .with_contracts(&contracts)
+        .with_attributes(&[("pool_type", "dsp")])
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+    component.set_change(ChangeType::Deletion);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -59,6 +86,18 @@ fn handle_new_dvm(event: NewDvm, tx: &TransactionTrace) -> TransactionProtocolCo
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
 
+fn handle_remove_dvm(event: RemoveDvm, tx: &TransactionTrace) -> TransactionProtocolComponents {
+    let tycho_tx: Transaction = tx.into();
+    let contracts = [event.dvm.as_slice()];
+    let mut component = ProtocolComponent::new(&event.dvm.to_hex())
+        .with_contracts(&contracts)
+        .with_attributes(&[("pool_type", "dvm")])
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+    component.set_change(ChangeType::Deletion);
+
+    TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
+}
+
 fn handle_new_gsp(event: NewGsp, tx: &TransactionTrace) -> TransactionProtocolComponents {
     let tycho_tx: Transaction = tx.into();
     let tokens = [event.base_token.as_slice(), event.quote_token.as_slice()];
@@ -68,6 +107,18 @@ fn handle_new_gsp(event: NewGsp, tx: &TransactionTrace) -> TransactionProtocolCo
         .with_contracts(&contracts)
         .with_attributes(&[("pool_type", "gsp")])
         .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+
+    TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
+}
+
+fn handle_remove_gsp(event: RemoveGsp, tx: &TransactionTrace) -> TransactionProtocolComponents {
+    let tycho_tx: Transaction = tx.into();
+    let contracts = [event.gsp.as_slice()];
+    let mut component = ProtocolComponent::new(&event.gsp.to_hex())
+        .with_contracts(&contracts)
+        .with_attributes(&[("pool_type", "gsp")])
+        .as_swap_type("dodo_v2_pool", ImplementationType::Custom);
+    component.set_change(ChangeType::Deletion);
 
     TransactionProtocolComponents { tx: Some(tycho_tx), components: vec![component] }
 }
@@ -107,11 +158,33 @@ fn get_new_pools(
 
     {
         let pools_clone = Rc::clone(&shared_pools);
+        eh.on::<RemoveDpp, _>(move |event, tx, log| {
+            if log.address == dpp_factory {
+                pools_clone
+                    .borrow_mut()
+                    .push(handle_remove_dpp(event, tx));
+            }
+        });
+    }
+
+    {
+        let pools_clone = Rc::clone(&shared_pools);
         eh.on::<NewDsp, _>(move |event, tx, log| {
             if log.address == dsp_factory {
                 pools_clone
                     .borrow_mut()
                     .push(handle_new_dsp(event, tx));
+            }
+        });
+    }
+
+    {
+        let pools_clone = Rc::clone(&shared_pools);
+        eh.on::<RemoveDsp, _>(move |event, tx, log| {
+            if log.address == dsp_factory {
+                pools_clone
+                    .borrow_mut()
+                    .push(handle_remove_dsp(event, tx));
             }
         });
     }
@@ -129,11 +202,33 @@ fn get_new_pools(
 
     {
         let pools_clone = Rc::clone(&shared_pools);
+        eh.on::<RemoveDvm, _>(move |event, tx, log| {
+            if log.address == dvm_factory {
+                pools_clone
+                    .borrow_mut()
+                    .push(handle_remove_dvm(event, tx));
+            }
+        });
+    }
+
+    {
+        let pools_clone = Rc::clone(&shared_pools);
         eh.on::<NewGsp, _>(move |event, tx, log| {
             if log.address == gsp_factory {
                 pools_clone
                     .borrow_mut()
                     .push(handle_new_gsp(event, tx));
+            }
+        });
+    }
+
+    {
+        let pools_clone = Rc::clone(&shared_pools);
+        eh.on::<RemoveGsp, _>(move |event, tx, log| {
+            if log.address == gsp_factory {
+                pools_clone
+                    .borrow_mut()
+                    .push(handle_remove_gsp(event, tx));
             }
         });
     }
