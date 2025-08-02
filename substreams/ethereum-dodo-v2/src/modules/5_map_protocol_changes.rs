@@ -47,17 +47,37 @@ pub fn map_protocol_changes(
             .entry(tx.index)
             .or_insert_with(|| TransactionChangesBuilder::new(&tx));
 
-        for (log, call_view) in transaction.logs_with_calls() {
-            // Skip if the log is not from a known dodo pool.
-            if let Some(pool) = pool_store.get_last(format!("Pool:{}", &log.address.to_hex())) {
+        for call in transaction
+            .calls
+            .iter()
+            .filter(|call| !call.state_reverted)
+        {
+            // Try to find a matching Pool from logs if any exist.
+            // This is the standard case where the Pool emits an event during the call.
+            let maybe_pool = if !call.logs.is_empty() {
+                call.logs
+                    .iter()
+                    .find_map(|log| pool_store.get_last(format!("Pool:{}", log.address.to_hex())))
+            } else {
+                None
+            };
+            // If no Pool was found from logs (e.g., during the pool's init phase),
+            // try using the caller address instead.
+            //
+            // There is a special case in DODO's GasSavingPool where the Pool contract is
+            // initialized via a call from the Factory, and no event is emitted by the Pool itself.
+            // In this case, the `call.caller` field will actually be the Pool address.
+            // Reference init function:
+            // https://github.com/DODOEX/dodo-gassaving-pool/blob/main/contracts/GasSavingPool/impl/GSP.sol#L23-L35
+            let maybe_pool = maybe_pool
+                .or_else(|| pool_store.get_last(format!("Pool:{}", call.caller.to_hex())));
+            if let Some(pool) = maybe_pool {
                 let changed_attributes =
-                    decode_event_changed_attributes(&call_view.call.storage_changes, &pool);
-
+                    decode_event_changed_attributes(&call.storage_changes, &pool);
                 let entity_change = EntityChanges {
-                    component_id: pool.address.clone().to_hex(),
+                    component_id: pool.address.to_hex(),
                     attributes: changed_attributes,
                 };
-
                 builder.add_entity_change(&entity_change);
             }
         }
